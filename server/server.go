@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	pb "github.com/haruotsu/easy-mcp/proto"
+	"google.golang.org/grpc/reflection"
 )
 
 type server struct{
@@ -31,6 +32,9 @@ func main(){
 	}
 	grpcServer := grpc.NewServer()
 	pb.RegisterMCPServiceServer(grpcServer, &server{})
+
+	// リフレクションを有効化
+    reflection.Register(grpcServer)
 	
 	log.Printf("Server started on port %d", 50051)
 	if err := grpcServer.Serve(lis); err != nil {
