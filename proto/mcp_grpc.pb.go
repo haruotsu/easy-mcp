@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MCPService_SendRequest_FullMethodName = "/mcp.MCPService/SendRequest"
+	MCPService_SendRequest_FullMethodName    = "/mcp.MCPService/SendRequest"
+	MCPService_StreamMessages_FullMethodName = "/mcp.MCPService/StreamMessages"
 )
 
 // MCPServiceClient is the client API for MCPService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MCPServiceClient interface {
 	SendRequest(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Response, error)
+	StreamMessages(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Request, Response], error)
 }
 
 type mCPServiceClient struct {
@@ -47,11 +49,25 @@ func (c *mCPServiceClient) SendRequest(ctx context.Context, in *Request, opts ..
 	return out, nil
 }
 
+func (c *mCPServiceClient) StreamMessages(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[Request, Response], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &MCPService_ServiceDesc.Streams[0], MCPService_StreamMessages_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[Request, Response]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MCPService_StreamMessagesClient = grpc.BidiStreamingClient[Request, Response]
+
 // MCPServiceServer is the server API for MCPService service.
 // All implementations must embed UnimplementedMCPServiceServer
 // for forward compatibility.
 type MCPServiceServer interface {
 	SendRequest(context.Context, *Request) (*Response, error)
+	StreamMessages(grpc.BidiStreamingServer[Request, Response]) error
 	mustEmbedUnimplementedMCPServiceServer()
 }
 
@@ -64,6 +80,9 @@ type UnimplementedMCPServiceServer struct{}
 
 func (UnimplementedMCPServiceServer) SendRequest(context.Context, *Request) (*Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendRequest not implemented")
+}
+func (UnimplementedMCPServiceServer) StreamMessages(grpc.BidiStreamingServer[Request, Response]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamMessages not implemented")
 }
 func (UnimplementedMCPServiceServer) mustEmbedUnimplementedMCPServiceServer() {}
 func (UnimplementedMCPServiceServer) testEmbeddedByValue()                    {}
@@ -104,6 +123,13 @@ func _MCPService_SendRequest_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MCPService_StreamMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MCPServiceServer).StreamMessages(&grpc.GenericServerStream[Request, Response]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MCPService_StreamMessagesServer = grpc.BidiStreamingServer[Request, Response]
+
 // MCPService_ServiceDesc is the grpc.ServiceDesc for MCPService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -116,6 +142,13 @@ var MCPService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MCPService_SendRequest_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamMessages",
+			Handler:       _MCPService_StreamMessages_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "proto/mcp.proto",
 }

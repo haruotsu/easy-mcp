@@ -5,6 +5,7 @@ option go_package = "./proto";
 
 service MCPService{
     rpc SendRequest(Request) returns (Response);
+    rpc StreamMessages(stream Request) returns (stream Response);
 }
 
 message Request{
